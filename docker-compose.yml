@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: powerdns-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    networks:
+      - powerdns-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio-client:
+    image: minio/mc:latest
+    container_name: powerdns-minio-client
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    networks:
+      - powerdns-network
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc mb myminio/powerdns-sync --ignore-existing;
+      exit 0;
+      "
+
+  powerdns:
+    image: powerdns/pdns-auth-49:latest
+    container_name: powerdns-auth
+    depends_on:
+      minio:
+        condition: service_healthy
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "8081:8081"
+    volumes:
+      - ./config/pdns.conf:/etc/powerdns/pdns.conf:ro
+      - pdns_lmdb:/var/lib/powerdns
+    environment:
+      PDNS_AUTH_API_KEY: ${PDNS_AUTH_API_KEY}
+    networks:
+      - powerdns-network
+    restart: unless-stopped
+
+  lightningstream:
+    image: powerdns/lightningstream:latest
+    container_name: powerdns-lightningstream
+    depends_on:
+      - minio
+      - powerdns
+    volumes:
+      - ./config/lightningstream.yaml:/etc/lightningstream/config.yaml:ro
+      - pdns_lmdb:/var/lib/powerdns
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_REGION: us-east-1
+    networks:
+      - powerdns-network
+    restart: unless-stopped
+
+  powerdns-admin:
+    image: powerdnsadmin/pda-legacy:latest
+    container_name: powerdns-admin
+    depends_on:
+      - powerdns
+    ports:
+      - "9191:80"
+    environment:
+      SQLALCHEMY_DATABASE_URI: sqlite:////data/pda.db
+      PDNS_STATS_URL: http://powerdns:8081
+      PDNS_API_KEY: ${PDNS_AUTH_API_KEY}
+      PDNS_VERSION: 4.9
+    volumes:
+      - pda_data:/data
+    networks:
+      - powerdns-network
+    restart: unless-stopped
+
+volumes:
+  minio_data:
+  pdns_lmdb:
+  pda_data:
+
+networks:
+  powerdns-network:
+    driver: bridge

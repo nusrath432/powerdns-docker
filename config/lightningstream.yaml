@@ -1,0 +1,37 @@
+# Lightning Stream Configuration
+# Syncs LMDB data with S3-compatible storage (MinIO)
+
+# LMDB Database Configuration
+lmdb:
+  path: "/var/lib/powerdns/pdns.lmdb"
+  sync_interval: "30s"
+
+# S3 Configuration (MinIO)
+s3:
+  endpoint: "http://minio:9000"
+  bucket: "powerdns-sync"
+  region: "us-east-1"
+  # Credentials are set via environment variables:
+  # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+  force_path_style: true
+
+# Sync Configuration
+sync:
+  # How often to check for changes
+  check_interval: "10s"
+  
+  # Maximum time to wait for S3 operations
+  timeout: "60s"
+  
+  # Instance identifier (unique per PowerDNS instance)
+  instance_id: "powerdns-1"
+
+# Logging Configuration
+logging:
+  level: "info"
+  format: "json"
+
+# Health Check Configuration
+health:
+  enabled: true
+  port: 8080
