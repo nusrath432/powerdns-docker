@@ -34,6 +34,13 @@ services:
     cpus: ${LIGHTNINGSTREAM_CPUS}
     mem_limit: ${LIGHTNINGSTREAM_MEM}
 
+    labels:
+      - "com.powerdns.stack=true"
+      - "com.powerdns.service=lightningstream"
+      - "service.name=lightningstream"
+      - "service.type=sync"
+      - "maintainer=nusrath432"
+
     env_file:
       - .env.secrets
     environment:
@@ -62,8 +69,11 @@ services:
       - "8080:8080"
 
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      <<: *common_healthcheck
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
 
   minio:
     container_name: minio
@@ -77,6 +87,13 @@ services:
 
     cpus: ${MINIO_CPUS}
     mem_limit: ${MINIO_MEM}
+
+    labels:
+      - "com.powerdns.stack=true"
+      - "com.powerdns.service=minio"
+      - "service.name=minio"
+      - "service.type=storage"
+      - "maintainer=nusrath432"
 
     env_file:
       - .env.secrets
@@ -96,7 +113,10 @@ services:
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
-      <<: *common_healthcheck
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
 
   minio-client:
     container_name: minio-client
@@ -110,6 +130,13 @@ services:
 
     cpus: ${MINIO_CLIENT_CPUS}
     mem_limit: ${MINIO_CLIENT_MEM}
+
+    labels:
+      - "com.powerdns.stack=true"
+      - "com.powerdns.service=minio-client"
+      - "service.name=minio-client"
+      - "service.type=init"
+      - "maintainer=nusrath432"
 
     env_file:
       - .env.secrets
@@ -149,6 +176,13 @@ services:
     cpus: ${PDA_CPUS}
     mem_limit: ${PDA_MEM}
 
+    labels:
+      - "com.powerdns.stack=true"
+      - "com.powerdns.service=admin"
+      - "service.name=powerdns-admin"
+      - "service.type=web"
+      - "maintainer=nusrath432"
+
     env_file:
       - .env.secrets
     environment:
@@ -166,8 +200,11 @@ services:
     networks: *common_networks
 
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
-      <<: *common_healthcheck
+      test: ["CMD", "curl", "-f", "http://localhost/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   powerdns-auth:
     container_name: pdns-auth
@@ -181,6 +218,13 @@ services:
 
     cpus: ${POWERDNS_AUTH_CPUS}
     mem_limit: ${POWERDNS_AUTH_MEM}
+
+    labels:
+      - "com.powerdns.stack=true"
+      - "com.powerdns.service=authoritative"
+      - "service.name=powerdns-auth"
+      - "service.type=dns"
+      - "maintainer=nusrath432"
 
     env_file:
       - .env.secrets
@@ -203,8 +247,11 @@ services:
     networks: *common_networks
 
     healthcheck:
-      test: ["CMD-SHELL", "exit 0"]
-      <<: *common_healthcheck
+      test: ["CMD-SHELL", "pdns_control ping || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
 
   powerdns-recursor:
     container_name: pdns-recursor
@@ -218,6 +265,13 @@ services:
 
     cpus: ${POWERDNS_RECURSOR_CPUS}
     mem_limit: ${POWERDNS_RECURSOR_MEM}
+
+    labels:
+      - "com.powerdns.stack=true"
+      - "com.powerdns.service=recursor"
+      - "service.name=powerdns-recursor"
+      - "service.type=dns"
+      - "maintainer=nusrath432"
 
     env_file:
       - .env.secrets
@@ -235,5 +289,8 @@ services:
     networks: *common_networks
 
     healthcheck:
-      test: ["CMD-SHELL", "exit 0"]
-      <<: *common_healthcheck
+      test: ["CMD-SHELL", "rec_control ping || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
