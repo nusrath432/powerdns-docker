@@ -7,17 +7,32 @@ default: help
 # Show all available recipes
 help:
     @echo ""
-    @echo "Available commands:"
-    @echo "  just up              # Start the stack in detached mode"
-    @echo "  just build           # Build and start the stack"
-    @echo "  just down            # Stop containers (keep volumes)"
-    @echo "  just reset           # Stop and remove containers + volumes"
-    @echo "  just logs            # View logs for all services"
-    @echo "  just logs-service X  # View logs for service X"
-    @echo "  just restart X       # Restart service X"
-    @echo "  just pull            # Pull latest images"
-    @echo "  just exec [service]  # Exec shell into a container (default: powerdns)"
-    @echo "  just ps              # Show container status"
+    @echo "🐳 Docker Stack Management:"
+    @echo "  just up                    # Start the stack in detached mode"
+    @echo "  just build                 # Build and start the stack"
+    @echo "  just down                  # Stop containers (keep volumes)"
+    @echo "  just reset                 # Stop and remove containers + volumes"
+    @echo "  just logs                  # View logs for all services"
+    @echo "  just logs-service X        # View logs for service X"
+    @echo "  just restart X             # Restart service X"
+    @echo "  just pull                  # Pull latest images"
+    @echo "  just exec [service]        # Exec shell into a container (default: powerdns-auth)"
+    @echo "  just ps                    # Show container status"
+    @echo ""
+    @echo "🔐 DNSSEC Management:"
+    @echo "  just dnssec-secure ZONE    # Enable DNSSEC for a zone"
+    @echo "  just dnssec-disable ZONE   # Disable DNSSEC for a zone"
+    @echo "  just dnssec-status ZONE    # Show DNSSEC status for a zone"
+    @echo "  just dnssec-keys ZONE      # List DNSSEC keys for a zone"
+    @echo "  just dnssec-ds ZONE        # Show DS record for parent zone"
+    @echo "  just dnssec-validate ZONE  # Validate DNSSEC signatures"
+    @echo "  just dnssec-test ZONE      # Test DNSSEC via recursor"
+    @echo "  just dnssec-zones          # List all zones with DNSSEC status"
+    @echo ""
+    @echo "🌐 DNS Testing:"
+    @echo "  just dig ZONE [TYPE]       # Query via PowerDNS Auth (port 53)"
+    @echo "  just dig-rec ZONE [TYPE]   # Query via PowerDNS Recursor (port 5353)"
+    @echo "  just dig-dnssec ZONE       # Query with DNSSEC validation"
     @echo ""
 
 up:
@@ -44,8 +59,87 @@ restart service:
 pull:
     docker compose --env-file .env --env-file .env.secrets pull
 
-exec service="powerdns":
+exec service="powerdns-auth":
     docker compose --env-file .env --env-file .env.secrets exec -it {{service}} /bin/sh
 
 ps:
     docker compose --env-file .env --env-file .env.secrets ps
+
+# DNSSEC Management Commands
+
+# Enable DNSSEC for a zone
+dnssec-secure zone:
+    @echo "🔐 Enabling DNSSEC for zone: {{zone}}"
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-auth pdnsutil secure-zone {{zone}}
+    @echo "✅ DNSSEC enabled for {{zone}}"
+    @echo "📋 Don't forget to submit the DS record to your registrar:"
+    @just dnssec-ds {{zone}}
+
+# Disable DNSSEC for a zone
+dnssec-disable zone:
+    @echo "⚠️  Disabling DNSSEC for zone: {{zone}}"
+    @echo "This will remove all DNSSEC keys and signatures!"
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-auth pdnsutil disable-dnssec {{zone}}
+    @echo "✅ DNSSEC disabled for {{zone}}"
+
+# Show DNSSEC status for a zone
+dnssec-status zone:
+    @echo "📊 DNSSEC status for zone: {{zone}}"
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-auth pdnsutil show-zone {{zone}}
+
+# List DNSSEC keys for a zone
+dnssec-keys zone:
+    @echo "🔑 DNSSEC keys for zone: {{zone}}"
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-auth pdnsutil list-keys {{zone}}
+
+# Show DS record for parent zone submission
+dnssec-ds zone:
+    @echo "📋 DS record for {{zone}} (submit to parent zone/registrar):"
+    @echo "" 
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-auth pdnsutil show-zone {{zone}} | grep "^DS"
+    @echo ""
+    @echo "Submit this DS record to your domain registrar or parent zone."
+
+# Validate DNSSEC signatures for a zone
+dnssec-validate zone:
+    @echo "✅ Validating DNSSEC for zone: {{zone}}"
+    @echo "Checking zone consistency..."
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-auth pdnsutil check-zone {{zone}}
+    @echo "Testing DNSSEC signatures..."
+    @just dig-dnssec {{zone}}
+
+# Test DNSSEC validation via recursor
+dnssec-test zone:
+    @echo "🧪 Testing DNSSEC validation via recursor for: {{zone}}"
+    @echo "Testing via PowerDNS Recursor (port 5353)..."
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-recursor drill -D {{zone}} SOA
+    @echo "DNSSEC validation status:"
+    @just dig-rec {{zone}} SOA
+
+# List all zones with DNSSEC status
+dnssec-zones:
+    @echo "📋 All zones with DNSSEC status:"
+    @docker compose --env-file .env --env-file .env.secrets exec powerdns-auth pdnsutil list-zones | while read zone; do \
+        if docker compose exec powerdns-auth pdnsutil list-keys "$$zone" 2>/dev/null | grep -q "KSK\|ZSK"; then \
+            echo "  ✅ $$zone (DNSSEC enabled)"; \
+        else \
+            echo "  ❌ $$zone (DNSSEC disabled)"; \
+        fi; \
+    done
+
+# DNS Testing Commands
+
+# Query DNS via PowerDNS Auth (port 53)
+dig zone type="A":
+    @echo "🔍 Querying {{zone}} {{type}} via PowerDNS Auth (port 53):"
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-auth dig @localhost {{zone}} {{type}}
+
+# Query DNS via PowerDNS Recursor (port 5353)  
+dig-rec zone type="A":
+    @echo "🔍 Querying {{zone}} {{type}} via PowerDNS Recursor (port 5353):"
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-recursor dig @localhost -p 5353 {{zone}} {{type}}
+
+# Query DNS with DNSSEC validation
+dig-dnssec zone type="SOA":
+    @echo "🔐 Querying {{zone}} {{type}} with DNSSEC signatures:"
+    docker compose --env-file .env --env-file .env.secrets exec powerdns-auth dig +dnssec +cd @localhost {{zone}} {{type}}

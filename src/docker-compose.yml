@@ -233,7 +233,7 @@ services:
 
     volumes:
       - ../data/lmdb:/var/lib/powerdns:rw
-      - ./services/powerdns/pdns.conf:/etc/powerdns/pdns.conf:ro
+      - ./services/powerdns-auth/pdns.conf:/etc/powerdns/pdns.conf:ro
 
     ports:
       - "${DNS_PORT}:53/tcp"
@@ -280,6 +280,7 @@ services:
 
     volumes:
       - ./services/powerdns-recursor/recursor.conf:/etc/powerdns/recursor.conf:ro
+      - ./services/powerdns-recursor/trust-anchors.conf:/etc/powerdns/trust-anchors.conf:ro
 
     ports:
       - "${PDNS_RECURSOR_DNS_PORT}:53/tcp"
