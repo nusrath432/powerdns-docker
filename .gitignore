@@ -16,6 +16,7 @@ logs/
 
 # Database and Storage
 data/
+backups/
 *.db
 *.sqlite
 *.sqlite3

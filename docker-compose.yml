@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   minio:
     image: minio/minio:latest
@@ -8,7 +6,7 @@ services:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - minio_data:/data
+      - ./data/minio:/data
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -49,12 +47,12 @@ services:
       minio:
         condition: service_healthy
     ports:
-      - "53:53/udp"
-      - "53:53/tcp"
+      - "5353:53/udp"
+      - "5353:53/tcp"
       - "8081:8081"
     volumes:
       - ./config/pdns.conf:/etc/powerdns/pdns.conf:ro
-      - pdns_lmdb:/var/lib/powerdns
+      - ./data/pdns-lmdb:/var/lib/powerdns
     environment:
       PDNS_AUTH_API_KEY: ${PDNS_AUTH_API_KEY}
     networks:
@@ -68,8 +66,8 @@ services:
       - minio
       - powerdns
     volumes:
-      - ./config/lightningstream.yaml:/etc/lightningstream/config.yaml:ro
-      - pdns_lmdb:/var/lib/powerdns
+      - ./config/lightningstream.yaml:/lightningstream.yaml:ro
+      - ./data/pdns-lmdb:/var/lib/powerdns
     environment:
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
@@ -91,15 +89,10 @@ services:
       PDNS_API_KEY: ${PDNS_AUTH_API_KEY}
       PDNS_VERSION: 4.9
     volumes:
-      - pda_data:/data
+      - ./data/pda-data:/data
     networks:
       - powerdns-network
     restart: unless-stopped
-
-volumes:
-  minio_data:
-  pdns_lmdb:
-  pda_data:
 
 networks:
   powerdns-network:
