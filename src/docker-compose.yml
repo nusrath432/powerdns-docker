@@ -20,11 +20,19 @@ x-service-stop: &service-stop-defaults
   stop_grace_period: 15s
   stop_signal: SIGTERM
 
+x-security: &security-defaults
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  cap_add:
+    - NET_BIND_SERVICE
+
 services:
   lightningstream:
     container_name: lightningstream
     hostname: lightningstream
-    <<: *service-stop-defaults
+    <<: [*service-stop-defaults, *security-defaults]
 
     image: ${LIGHTNINGSTREAM_IMAGE}
 
@@ -65,8 +73,6 @@ services:
 
     networks: *common_networks
 
-    ports:
-      - "8080:8080"
 
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
@@ -78,7 +84,7 @@ services:
   minio:
     container_name: minio
     hostname: minio
-    <<: *service-stop-defaults
+    <<: [*service-stop-defaults, *security-defaults]
 
     image: ${MINIO_IMAGE}
 
@@ -121,7 +127,7 @@ services:
   minio-client:
     container_name: minio-client
     hostname: minio-client
-    <<: *service-stop-defaults
+    <<: [*service-stop-defaults, *security-defaults]
 
     image: ${MINIO_CLIENT_IMAGE}
 
@@ -148,7 +154,7 @@ services:
 
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc alias set minio http://minio:${MINIO_API_PORT} $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc alias set minio http://minio:${MINIO_API_PORT} \"$${MINIO_ROOT_USER}\" \"$${MINIO_ROOT_PASSWORD}\";
       /usr/bin/mc mb minio/powerdns-sync --ignore-existing;
       exit 0;
       "
@@ -166,7 +172,7 @@ services:
   powerdns-admin:
     container_name: pdns-admin
     hostname: pdns-admin
-    <<: *service-stop-defaults
+    <<: [*service-stop-defaults, *security-defaults]
 
     image: ${POWERDNS_ADMIN_IMAGE}
 
@@ -209,7 +215,7 @@ services:
   powerdns-auth:
     container_name: pdns-auth
     hostname: pdns-auth
-    <<: *service-stop-defaults
+    <<: [*service-stop-defaults, *security-defaults]
 
     image: ${POWERDNS_AUTH_IMAGE}
 
@@ -238,7 +244,6 @@ services:
     ports:
       - "${DNS_PORT}:53/tcp"
       - "${DNS_PORT}:53/udp"
-      - "${PDNS_API_PORT}:8081"
 
     depends_on:
       minio:
@@ -252,11 +257,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 45s
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid
+    ulimits:
+      nofile: 65536
 
   powerdns-recursor:
     container_name: pdns-recursor
     hostname: pdns-recursor
-    <<: *service-stop-defaults
+    <<: [*service-stop-defaults, *security-defaults]
 
     image: ${POWERDNS_RECURSOR_IMAGE}
 
@@ -285,7 +295,6 @@ services:
     ports:
       - "${PDNS_RECURSOR_DNS_PORT}:53/tcp"
       - "${PDNS_RECURSOR_DNS_PORT}:53/udp"
-      - "${PDNS_RECURSOR_WEB_PORT}:8082"
 
     networks: *common_networks
 
@@ -295,3 +304,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 45s
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid
+    ulimits:
+      nofile: 65536
