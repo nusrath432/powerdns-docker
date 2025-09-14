@@ -1,0 +1,15 @@
+# Ignore runtime data directory at repo root
+../data/
+
+# Ignore environment files
+.env
+.env.secrets
+
+# Ignore OS/editor junk
+.DS_Store
+Thumbs.db
+
+# Ignore Docker artifacts
+*.pid
+*.log
+*.tmp

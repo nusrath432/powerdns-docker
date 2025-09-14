@@ -1,0 +1,23 @@
+# Lightning Stream Configuration
+instance: "powerdns-1"
+
+lmdbs:
+  main:
+    path: "/var/lib/powerdns/pdns.lmdb"
+    schema_tracks_changes: true
+    options:
+      no_subdir: true
+      create: true
+
+storage:
+  type: s3
+  options:
+    endpoint_url: "http://minio:9000"
+    bucket: "powerdns-sync"
+    region: "local"
+    create_bucket: true
+    access_key: "${MINIO_ROOT_USER}"
+    secret_key: "${MINIO_ROOT_PASSWORD}"
+
+http:
+  address: ":8080"

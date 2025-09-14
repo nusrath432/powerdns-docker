@@ -1,0 +1,51 @@
+# Load environment variables from .env
+set dotenv-load
+
+# Default recipe → help
+default: help
+
+# Show all available recipes
+help:
+    @echo ""
+    @echo "Available commands:"
+    @echo "  just up              # Start the stack in detached mode"
+    @echo "  just build           # Build and start the stack"
+    @echo "  just down            # Stop containers (keep volumes)"
+    @echo "  just reset           # Stop and remove containers + volumes"
+    @echo "  just logs            # View logs for all services"
+    @echo "  just logs-service X  # View logs for service X"
+    @echo "  just restart X       # Restart service X"
+    @echo "  just pull            # Pull latest images"
+    @echo "  just exec [service]  # Exec shell into a container (default: powerdns)"
+    @echo "  just ps              # Show container status"
+    @echo ""
+
+up:
+    docker compose --env-file .env --env-file .env.secrets up -d
+
+build:
+    docker compose --env-file .env --env-file .env.secrets up -d --build
+
+down:
+    docker compose --env-file .env --env-file .env.secrets down
+
+reset:
+    docker compose --env-file .env --env-file .env.secrets down -v
+
+logs:
+    docker compose --env-file .env --env-file .env.secrets logs -f
+
+logs-service service:
+    docker compose --env-file .env --env-file .env.secrets logs -f {{service}}
+
+restart service:
+    docker compose --env-file .env --env-file .env.secrets restart {{service}}
+
+pull:
+    docker compose --env-file .env --env-file .env.secrets pull
+
+exec service="powerdns":
+    docker compose --env-file .env --env-file .env.secrets exec -it {{service}} /bin/sh
+
+ps:
+    docker compose --env-file .env --env-file .env.secrets ps
