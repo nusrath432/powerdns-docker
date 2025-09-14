@@ -136,7 +136,40 @@ services:
       test: ["CMD-SHELL", "exit 0"]
       <<: *common_healthcheck
 
-  powerdns:
+  powerdns-admin:
+    container_name: pdns-admin
+    hostname: pdns-admin
+    <<: *service-stop-defaults
+
+    image: ${POWERDNS_ADMIN_IMAGE}
+
+    user: "root:root"
+    restart: unless-stopped
+
+    cpus: ${PDA_CPUS}
+    mem_limit: ${PDA_MEM}
+
+    env_file:
+      - .env.secrets
+    environment:
+      <<: *common_env
+
+    volumes:
+      - ../data/pda:/data:rw
+
+    ports:
+      - "${PDA_WEB_PORT}:80"
+
+    depends_on:
+      - powerdns
+
+    networks: *common_networks
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      <<: *common_healthcheck
+
+  powerdns-auth:
     container_name: pdns-auth
     hostname: pdns-auth
     <<: *service-stop-defaults
@@ -173,18 +206,18 @@ services:
       test: ["CMD-SHELL", "exit 0"]
       <<: *common_healthcheck
 
-  powerdns-admin:
-    container_name: pdns-admin
-    hostname: pdns-admin
+  powerdns-recursor:
+    container_name: pdns-recursor
+    hostname: pdns-recursor
     <<: *service-stop-defaults
 
-    image: ${POWERDNS_ADMIN_IMAGE}
+    image: ${POWERDNS_RECURSOR_IMAGE}
 
     user: "root:root"
     restart: unless-stopped
 
-    cpus: ${PDA_CPUS}
-    mem_limit: ${PDA_MEM}
+    cpus: ${POWERDNS_RECURSOR_CPUS}
+    mem_limit: ${POWERDNS_RECURSOR_MEM}
 
     env_file:
       - .env.secrets
@@ -192,16 +225,15 @@ services:
       <<: *common_env
 
     volumes:
-      - ../data/pda:/data:rw
+      - ./services/powerdns-recursor/recursor.conf:/etc/powerdns/recursor.conf:ro
 
     ports:
-      - "${PDA_WEB_PORT}:80"
-
-    depends_on:
-      - powerdns
+      - "5353:53/tcp"
+      - "5353:53/udp"
+      - "8082:8082"
 
     networks: *common_networks
 
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      test: ["CMD-SHELL", "exit 0"]
       <<: *common_healthcheck
