@@ -8,12 +8,18 @@ lmdbs:
     options:
       no_subdir: true
       create: true
+  shard:
+    path: "/var/lib/powerdns/pdns.lmdb-0"
+    schema_tracks_changes: true
+    options:
+      no_subdir: true
+      create: true
 
 storage:
   type: s3
   options:
     endpoint_url: "http://minio:9000"
-    bucket: "powerdns-sync"
+    bucket: "${MINIO_BUCKET_NAME}"
     region: "local"
     create_bucket: true
     access_key: "${MINIO_ROOT_USER}"

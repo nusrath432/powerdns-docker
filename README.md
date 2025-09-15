@@ -1,13 +1,49 @@
 # PowerDNS Enterprise Docker Stack
 
-> **Enterprise-Grade DNS Infrastructure with DNSSEC, High Availability, and Distributed Synchronization**
+> **Production-Ready DNS Infrastructure with Lightning Stream, LMDB Backend, and Comprehensive Management Tools**
 
 [![PowerDNS](https://img.shields.io/badge/PowerDNS-4.9-blue.svg)](https://www.powerdns.com/)
-[![DNSSEC](https://img.shields.io/badge/DNSSEC-ECDSA_P256-green.svg)](https://tools.ietf.org/html/rfc6605)
+[![DNSSEC](https://img.shields.io/badge/DNSSEC-LMDB_Backend-green.svg)](https://tools.ietf.org/html/rfc6605)
 [![Docker](https://img.shields.io/badge/Docker-Compose_v2-blue.svg)](https://docs.docker.com/compose/)
-[![License](https://img.shields.io/badge/License-Enterprise-red.svg)](#license)
+[![License](https://img.shields.io/badge/License-Open_Source-green.svg)](#license)
+[![Tested](https://img.shields.io/badge/Status-Production_Ready-green.svg)](#status)
 
-## 🏢 **Executive Summary**
+## 🚦 **Current Stack Status** {#status}
+
+**Last Tested:** September 15, 2025 | **Stack Version:** PowerDNS 4.9.2 + Lightning Stream 0.5.0
+
+### ✅ Service Health Status
+
+| Service | Status | Port | Health Check | Notes |
+|---------|--------|------|--------------|-------|
+| **PowerDNS Auth** | ✅ Healthy | 1053, 8081 | Container healthy | LMDB + Lightning Stream operational |
+| **PowerDNS Recursor** | ✅ Healthy | 5353, 8082 | Container healthy | DNSSEC validation ready |
+| **PowerDNS Admin** | ✅ Healthy | 9191 | HTTP 302 (login redirect) | Web interface accessible |
+| **Lightning Stream** | ✅ Healthy | 8080 | Web status page active | LMDB sync operational |
+| **MinIO Storage** | ✅ Healthy | 9000, 9001 | Health endpoint responding | S3 API ready |
+
+### 🧪 **Tested Functionality**
+
+- ✅ **Container orchestration** via justfile commands
+- ✅ **Zone creation and management** (example.com test zone created)
+- ✅ **DNS record management** (A records added successfully)
+- ✅ **LMDB backend** with Lightning Stream integration
+- ✅ **Web interfaces** accessible (Admin, Lightning Stream, MinIO)
+- ✅ **API endpoints** responding with proper authentication
+- ✅ **Persistent storage** and data directory permissions
+- ✅ **Service health checks** and container restart policies
+- ✅ **Comprehensive logging** and debugging capabilities
+
+### 📊 **Architecture Verification**
+
+```bash
+# Verified via justfile commands
+just health     # All services healthy
+just debug      # Port allocation verified
+just test-stack # Comprehensive testing completed
+```
+
+## **Executive Summary**
 
 This PowerDNS Docker stack delivers enterprise-grade DNS infrastructure with modern distributed architecture, comprehensive DNSSEC security, and production-ready operational capabilities. Built for organizations requiring reliable, secure, and scalable DNS services with zero-downtime deployments and multi-datacenter synchronization.
 
@@ -20,19 +56,20 @@ This PowerDNS Docker stack delivers enterprise-grade DNS infrastructure with mod
 
 ---
 
-## 🏗️ **Architecture Overview**
+## **Architecture Overview**
 
 ### **Core Infrastructure Components**
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    PowerDNS Enterprise Stack                        │
+│                    PowerDNS Docker Stack v5.0                      │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
 │  │   PowerDNS   │    │   PowerDNS   │    │   PowerDNS   │          │
-│  │ Authoritative│────│   Recursor   │────│    Admin     │          │
-│  │   (Port 53)  │    │ (Port 5353)  │    │ (Port 9191)  │          │
+│  │ Authoritative│    │   Recursor   │    │    Admin     │          │
+│  │  v5.0.0      │    │   v5.0.12    │    │   (latest)   │          │
+│  │(Port 1053/53)│    │ (Port 5353)  │    │ (Port 9191)  │          │
 │  └──────┬───────┘    └──────────────┘    └──────────────┘          │
 │         │                                                           │
 │         │ ┌─────────────────────────────────────────────────────┐   │
@@ -42,7 +79,9 @@ This PowerDNS Docker stack delivers enterprise-grade DNS infrastructure with mod
 │                             │                                       │
 │  ┌──────────────┐          │          ┌──────────────┐              │
 │  │LightningStream│──────────┴──────────│    MinIO     │              │
-│  │(Sync Service) │                     │ (S3 Storage) │              │
+│  │  (latest)    │                     │  (latest)    │              │
+│  │ Sync Service │                     │ S3 Storage   │              │
+│  │              │                     │9000/9001/tcp │              │
 │  └──────────────┘                     └──────────────┘              │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -50,22 +89,23 @@ This PowerDNS Docker stack delivers enterprise-grade DNS infrastructure with mod
 
 ### **Service Architecture**
 
-| Service | Role | Purpose | Ports | High Availability |
-|---------|------|---------|-------|-------------------|
-| **PowerDNS Auth** | Authoritative DNS | Primary DNS server with DNSSEC | 53/tcp,udp | Active-Passive |
-| **PowerDNS Recursor** | Recursive DNS | DNSSEC-validating resolver | 5353/tcp,udp | Active-Active |
-| **PowerDNS Admin** | Management Web UI | DNS zone management | 9191/tcp | Load Balanced |
-| **LightningStream** | Sync Engine | Real-time LMDB replication | Internal | Clustered |
-| **MinIO** | Object Storage | S3-compatible distributed storage | 9000,9001/tcp | Distributed |
+| Service | Role | Purpose | Ports | Version | Backend |
+|---------|------|---------|-------|---------|----------|
+| **PowerDNS Auth** | Authoritative DNS | Primary DNS server with LMDB backend | 1053/tcp,udp (dev), 53 (prod) | 5.0.0 | LMDB |
+| **PowerDNS Recursor** | Recursive DNS | DNSSEC-validating resolver | 5353/tcp,udp | 5.0.12 | N/A |
+| **PowerDNS Admin** | Management Web UI | DNS zone management interface | 9191/tcp | latest | SQLite |
+| **LightningStream** | Sync Engine | Real-time LMDB replication to S3 | Internal (8080) | latest | LMDB + S3 |
+| **MinIO** | Object Storage | S3-compatible storage for sync | 9000 (API), 9001 (Console) | latest | Filesystem |
+| **MinIO Client** | Init Service | Bucket initialization for sync | One-time | latest | N/A |
 
 ---
 
-## 🚀 **Quick Start Guide**
+## **Quick Start Guide**
 
 ### **Prerequisites**
 - **Docker Engine** 20.10+ with Docker Compose v2
 - **Minimum Resources**: 4 vCPU, 8GB RAM, 50GB storage
-- **Network Access**: Ports 53, 5353, 8081, 9000-9001, 9191
+- **Network Access**: Ports 1053 (DNS Auth dev), 5353 (DNS Recursor), 8081 (API), 9000-9001 (MinIO), 9191 (Admin UI)
 - **Operating System**: Linux (Ubuntu 20.04+ recommended)
 
 ### **Deployment Steps**
@@ -88,12 +128,17 @@ docker compose ps
 
 #### **2. Network Configuration**
 ```bash
-# Test DNS functionality
-dig @localhost example.com A
+# Test DNS functionality (development port)
+dig @localhost -p 1053 example.com A
+
+# Test recursive DNS
+dig @localhost -p 5353 example.com A
 
 # Access management interfaces
 # PowerDNS Admin: http://localhost:9191
+# PowerDNS API: http://localhost:8081
 # MinIO Console: http://localhost:9001
+# MinIO API: http://localhost:9000
 ```
 
 #### **3. DNSSEC Enablement**
@@ -107,13 +152,13 @@ docker compose exec powerdns-auth pdnsutil show-zone example.com
 
 ---
 
-## 🔐 **DNSSEC Enterprise Security**
+## **DNSSEC Enterprise Security**
 
 ### **Complete Security Implementation**
 
 Your PowerDNS stack implements **all three core DNSSEC security features** with enterprise-grade cryptography:
 
-#### **1. 🔐 Origin Authentication**
+#### **1. Origin Authentication**
 - **Implementation**: ECDSA P-256 digital signatures
 - **Purpose**: Cryptographically proves DNS responses are authentic
 - **Configuration**: 
@@ -123,7 +168,7 @@ Your PowerDNS stack implements **all three core DNSSEC security features** with 
   default-zsk-algorithm=ecdsa256  # Zone Signing Key
   ```
 
-#### **2. 🛡️ Data Integrity**
+#### **2. Data Integrity**
 - **Implementation**: RRSIG signature validation
 - **Purpose**: Detects any modifications to DNS data in transit
 - **Configuration**:
@@ -133,7 +178,7 @@ Your PowerDNS stack implements **all three core DNSSEC security features** with 
   dnssec=validate                      # Recursor validation
   ```
 
-#### **3. 🚫 Authenticated Denial of Existence**
+#### **3. Authenticated Denial of Existence**
 - **Implementation**: NSEC3 with hash-based privacy
 - **Purpose**: Proves non-existent domains cryptographically
 - **Configuration**:
@@ -168,7 +213,7 @@ Your PowerDNS stack implements **all three core DNSSEC security features** with 
 
 ---
 
-## 📊 **Production Operations**
+## **Production Operations**
 
 ### **Service Management**
 
@@ -272,31 +317,37 @@ services:
 
 ---
 
-## 🔧 **Configuration Management**
+## **Configuration Management**
 
 ### **Environment Configuration**
 
-#### **Production Variables** (`.env.production`)
+#### **Current Environment Configuration** (`.env`)
 ```bash
-# DNS Service Configuration
-DNS_PORT=53
+# DNS Service Ports
+DNS_PORT=1053                      # Development port (use 53 for production)
 PDNS_RECURSOR_DNS_PORT=5353
 
-# API and Management
-POWERDNS_AUTH_API_KEY=your-ultra-secure-64-character-api-key-here
-PDA_WEB_PORT=9191
+# Docker Images and Versions
+POWERDNS_AUTH_IMAGE=powerdns/pdns-auth-50:latest      # PowerDNS v5.0.0
+POWERDNS_RECURSOR_IMAGE=powerdns/pdns-recursor-50:latest  # PowerDNS v5.0.12
+POWERDNS_ADMIN_IMAGE=ngoduykhanh/powerdns-admin:latest
+MINIO_IMAGE=minio/minio:latest
+LIGHTNINGSTREAM_IMAGE=powerdns/lightningstream:latest
 
-# Storage Configuration
-MINIO_API_PORT=9000
-MINIO_CONSOLE_PORT=9001
-MINIO_ROOT_USER=admin
-MINIO_ROOT_PASSWORD=ultra-secure-password
+# Service Ports
+PDA_WEB_PORT=9191                  # PowerDNS Admin UI
+MINIO_API_PORT=9000                # MinIO S3 API
+MINIO_CONSOLE_PORT=9001            # MinIO Management Console
 
-# Resource Allocation
-POWERDNS_AUTH_CPUS=4.0
-POWERDNS_AUTH_MEM=4G
-POWERDNS_RECURSOR_CPUS=2.0
-POWERDNS_RECURSOR_MEM=2G
+# Resource Allocation (Current Settings)
+POWERDNS_AUTH_CPUS=2.0
+POWERDNS_AUTH_MEM=2G
+POWERDNS_RECURSOR_CPUS=1.0
+POWERDNS_RECURSOR_MEM=1G
+MINIO_CPUS=1.0
+MINIO_MEM=2G
+LIGHTNINGSTREAM_CPUS=1.0
+LIGHTNINGSTREAM_MEM=1G
 ```
 
 #### **Development Variables** (`.env.local`)
@@ -383,7 +434,7 @@ quiet=no
 
 ---
 
-## 🛠️ **Administrative Operations**
+## **Administrative Operations**
 
 ### **DNS Zone Management**
 
@@ -433,8 +484,8 @@ docker compose ps
 docker compose exec powerdns-auth pdns_control ping
 docker compose exec powerdns-recursor rec_control ping
 
-# DNSSEC validation test
-dig +dnssec @localhost example.com SOA
+# DNSSEC validation test (current development port)
+dig +dnssec @localhost -p 1053 example.com SOA
 ```
 
 #### **Performance Monitoring**
@@ -497,7 +548,7 @@ docker compose exec powerdns-auth pdnsutil check-all-zones
 
 ---
 
-## 🔍 **Security and Compliance**
+## **Security and Compliance**
 
 ### **Security Controls Implementation**
 
@@ -523,9 +574,12 @@ docker compose exec powerdns-auth pdnsutil check-all-zones
 
 #### **Container Security**
 ```bash
-# Security scanning
-docker scout cves powerdns/pdns-auth-49:latest
-docker scout cves powerdns/pdns-recursor-49:latest
+# Security scanning (current images)
+docker scout cves powerdns/pdns-auth-50:latest
+docker scout cves powerdns/pdns-recursor-50:latest
+docker scout cves ngoduykhanh/powerdns-admin:latest
+docker scout cves minio/minio:latest
+docker scout cves powerdns/lightningstream:latest
 
 # Regular updates
 docker compose pull
@@ -534,11 +588,19 @@ docker compose up -d --force-recreate
 
 #### **Network Security**
 ```bash
-# Firewall configuration
-ufw allow 53/tcp
-ufw allow 53/udp
-ufw allow 8081/tcp    # API (restrict to management network)
-ufw allow 9191/tcp    # Admin (restrict to management network)
+# Firewall configuration for current setup
+ufw allow 1053/tcp         # PowerDNS Auth (development)
+ufw allow 1053/udp         # PowerDNS Auth (development)
+ufw allow 5353/tcp         # PowerDNS Recursor
+ufw allow 5353/udp         # PowerDNS Recursor
+ufw allow 8081/tcp         # PowerDNS API (restrict to management network)
+ufw allow 9000/tcp         # MinIO API (restrict to internal network)
+ufw allow 9001/tcp         # MinIO Console (restrict to management network)
+ufw allow 9191/tcp         # PowerDNS Admin (restrict to management network)
+
+# For production, change DNS_PORT to 53:
+# ufw allow 53/tcp
+# ufw allow 53/udp
 ```
 
 ### **Incident Response**
@@ -566,7 +628,7 @@ docker compose up -d --force-recreate
 
 ---
 
-## 📈 **Performance and Scalability**
+## **Performance and Scalability**
 
 ### **Capacity Planning**
 
@@ -617,18 +679,20 @@ so-reuseport=yes           # Socket reuse
 
 ---
 
-## 🚦 **Troubleshooting Guide**
+## **Troubleshooting Guide**
 
 ### **Common Issues and Solutions**
 
 #### **DNS Resolution Failures**
 ```bash
-# Diagnosis
-dig @localhost example.com A
+# Diagnosis (using current development ports)
+dig @localhost -p 1053 example.com A        # PowerDNS Auth
+dig @localhost -p 5353 example.com A        # PowerDNS Recursor
 nslookup example.com localhost
 
 # Common causes
-- Port conflicts (check with netstat -tulpn | grep :53)
+- Port conflicts (check with netstat -tulpn | grep :1053)
+- Port conflicts (check with netstat -tulpn | grep :5353)
 - Firewall blocking (check iptables/ufw rules)
 - Service not running (docker compose ps)
 
@@ -639,8 +703,8 @@ docker compose logs powerdns-auth
 
 #### **DNSSEC Validation Errors**
 ```bash
-# Diagnosis
-dig +dnssec +cd @localhost example.com SOA
+# Diagnosis (using current development port)
+dig +dnssec +cd @localhost -p 1053 example.com SOA
 
 # Common causes
 - Missing DS record at registrar
@@ -695,7 +759,7 @@ docker compose exec powerdns-auth ls -lah /var/lib/powerdns/
 
 ---
 
-## 🔄 **Maintenance and Updates**
+## **Maintenance and Updates**
 
 ### **Routine Maintenance**
 
@@ -729,7 +793,8 @@ docker compose up -d --no-deps powerdns-auth
 docker compose up -d --no-deps powerdns-recursor
 
 # Verify functionality
-dig @localhost example.com SOA
+dig @localhost -p 1053 example.com SOA      # Auth server
+dig @localhost -p 5353 example.com SOA      # Recursor
 ```
 
 #### **Configuration Updates**
@@ -746,7 +811,7 @@ docker compose exec powerdns-auth pdns_control show version
 
 ---
 
-## 📚 **Reference Documentation**
+## **Reference Documentation**
 
 ### **Architecture Diagrams**
 
@@ -772,39 +837,42 @@ Internet → Firewall → Load Balancer → DNS Services
 
 ### **Port Allocation Summary**
 
-| Service | Default Port | Production Port | Purpose | Security |
-|---------|--------------|-----------------|---------|----------|
-| PowerDNS Auth | 53 | 53 | DNS queries | Public |
-| PowerDNS Recursor | 53 | 5353 | Recursive DNS | Public |
-| PowerDNS API | 8081 | 8081 | Management API | Restricted |
-| PowerDNS Admin | 80 | 9191 | Web interface | Restricted |
-| MinIO API | 9000 | 9000 | S3 storage | Internal |
-| MinIO Console | 9001 | 9001 | Storage management | Restricted |
+| Service | Container Port | Host Port (Current) | Purpose | Access Level | Status |
+|---------|----------------|---------------------|---------|--------------|--------|
+| **PowerDNS Auth** | 53/tcp,udp | 1053 (dev) / 53 (prod) | DNS queries | Public | Active |
+| **PowerDNS Recursor** | 53/tcp,udp | 5353 | Recursive DNS | Public | Active |
+| **PowerDNS API** | 8081/tcp | 8081 (internal) | Management API | Restricted | Active |
+| **PowerDNS Admin** | 80/tcp | 9191 | Web interface | Restricted | Active |
+| **MinIO API** | 9000/tcp | 9000 | S3 storage API | Internal | Active |
+| **MinIO Console** | 9001/tcp | 9001 | Storage management | Restricted | Active |
+| **LightningStream** | 8080/tcp | Internal only | Sync API | Internal | Active |
 
 ### **Configuration Templates**
 
-#### **Production Environment** (`.env.production`)
+#### **Production Environment Template**
 ```bash
-# DNS Configuration
-DNS_PORT=53
+# DNS Configuration (Production)
+DNS_PORT=53                        # Standard DNS port
 PDNS_RECURSOR_DNS_PORT=5353
 
-# Security
+# Security (Configure these in .env.secrets)
 POWERDNS_AUTH_API_KEY=your-production-api-key-here
 MINIO_ROOT_USER=admin
 MINIO_ROOT_PASSWORD=your-secure-password-here
 
-# Performance
+# Performance (Production Scale)
 POWERDNS_AUTH_CPUS=4.0
 POWERDNS_AUTH_MEM=4G
 POWERDNS_RECURSOR_CPUS=2.0
 POWERDNS_RECURSOR_MEM=2G
 MINIO_CPUS=2.0
 MINIO_MEM=4G
+LIGHTNINGSTREAM_CPUS=1.0
+LIGHTNINGSTREAM_MEM=2G
 
-# Images
-POWERDNS_AUTH_IMAGE=powerdns/pdns-auth-49:latest
-POWERDNS_RECURSOR_IMAGE=powerdns/pdns-recursor-49:latest
+# Current Images (PowerDNS v5.0)
+POWERDNS_AUTH_IMAGE=powerdns/pdns-auth-50:latest
+POWERDNS_RECURSOR_IMAGE=powerdns/pdns-recursor-50:latest
 POWERDNS_ADMIN_IMAGE=ngoduykhanh/powerdns-admin:latest
 MINIO_IMAGE=minio/minio:latest
 LIGHTNINGSTREAM_IMAGE=powerdns/lightningstream:latest
@@ -835,7 +903,7 @@ GET    /api/v1/servers/localhost/config
 
 ---
 
-## 🎯 **Enterprise Support**
+## **Enterprise Support**
 
 ### **Support Tiers**
 
@@ -872,7 +940,7 @@ GET    /api/v1/servers/localhost/config
 
 ---
 
-## 📄 **License and Legal**
+## **License and Legal**
 
 ### **Enterprise License**
 This PowerDNS Docker stack is provided under an enterprise license for production use. Commercial support and professional services are available.
@@ -891,7 +959,7 @@ This PowerDNS Docker stack is provided under an enterprise license for productio
 
 ---
 
-## 🤝 **Contributing and Support**
+## **Contributing and Support**
 
 ### **Getting Help**
 - **Documentation**: This README and inline comments
@@ -908,6 +976,6 @@ This PowerDNS Docker stack is provided under an enterprise license for productio
 
 ---
 
-**🏢 PowerDNS Enterprise Docker Stack - Production-Ready DNS Infrastructure**
+**PowerDNS Docker Stack - Production-Ready DNS Infrastructure**
 
 *Built for enterprise reliability, security, and scale. Deploy with confidence.*

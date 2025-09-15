@@ -1,0 +1,20 @@
+# PowerDNS Docker Stack - Repository Root .gitignore
+
+# Ignore all runtime data (databases, logs, persistent volumes, etc.)
+data/
+
+# Ignore environment files
+.env
+.env.secrets
+
+# OS/Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace

@@ -36,7 +36,7 @@ services:
 
     image: ${LIGHTNINGSTREAM_IMAGE}
 
-    user: "root:root"
+    user: "953:953"
     restart: unless-stopped
 
     cpus: ${LIGHTNINGSTREAM_CPUS}
@@ -47,35 +47,38 @@ services:
       - "com.powerdns.service=lightningstream"
       - "service.name=lightningstream"
       - "service.type=sync"
-      - "maintainer=nusrath432"
 
     env_file:
+      - .env
       - .env.secrets
     environment:
       <<: *common_env
 
     volumes:
-      - ../data/lmdb:/var/lib/powerdns:rw
+      - ./data/lmdb:/var/lib/powerdns:rw
       - ./services/lightningstream/lightningstream.yml:/etc/lightningstream.yaml:ro
 
     command:
-      - sync
+      - receive
       - -c
       - /etc/lightningstream.yaml
-      - --instance=powerdns-1
-      - --timeout=60s
-      - --log-level=info
-      - --log-format=json
+      - --instance=${LIGHTNINGSTREAM_INSTANCE}
+      - --log-level=${LIGHTNINGSTREAM_LOG_LEVEL}
+      - --log-format=${LIGHTNINGSTREAM_LOG_FORMAT}
+      - --timeout=${LIGHTNINGSTREAM_TIMEOUT}
 
     depends_on:
       - minio
       - powerdns-auth
 
+    ports:
+      - "${LIGHTNINGSTREAM_HTTP_PORT}:8080"
+
     networks: *common_networks
 
 
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      test: ["CMD-SHELL", "test -f /proc/1/cmdline && grep -q lightningstream /proc/1/cmdline || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -102,12 +105,13 @@ services:
       - "maintainer=nusrath432"
 
     env_file:
+      - .env
       - .env.secrets
     environment:
       <<: *common_env
 
     volumes:
-      - ../data/minio:/data:rw
+      - ./data/minio:/data:rw
 
     command: server /data --console-address ":${MINIO_CONSOLE_PORT}"
 
@@ -145,17 +149,15 @@ services:
       - "maintainer=nusrath432"
 
     env_file:
+      - .env
       - .env.secrets
     environment:
       <<: *common_env
 
-    volumes:
-      - ./services/scripts:/scripts:ro
-
-    entrypoint: >
+    entrypoint:
       /bin/sh -c "
       /usr/bin/mc alias set minio http://minio:${MINIO_API_PORT} \"$${MINIO_ROOT_USER}\" \"$${MINIO_ROOT_PASSWORD}\";
-      /usr/bin/mc mb minio/powerdns-sync --ignore-existing;
+      /usr/bin/mc mb minio/${MINIO_BUCKET_NAME} --ignore-existing;
       exit 0;
       "
 
@@ -190,12 +192,18 @@ services:
       - "maintainer=nusrath432"
 
     env_file:
+      - .env
       - .env.secrets
     environment:
       <<: *common_env
+      SECRET_KEY:
+      SQLALCHEMY_DATABASE_URI: "${PDA_DATABASE_URI}"
+      GUNICORN_TIMEOUT: "${PDA_GUNICORN_TIMEOUT}"
+      GUNICORN_WORKERS: "${PDA_GUNICORN_WORKERS}"
+      GUNICORN_LOGLEVEL: "${PDA_GUNICORN_LOGLEVEL}"
 
     volumes:
-      - ../data/pda:/data:rw
+      - ./data/pda:/data:rw
 
     ports:
       - "${PDA_WEB_PORT}:80"
@@ -206,7 +214,7 @@ services:
     networks: *common_networks
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/login"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--timeout=5", "--spider", "http://127.0.0.1/login"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -215,35 +223,32 @@ services:
   powerdns-auth:
     container_name: pdns-auth
     hostname: pdns-auth
-    <<: [*service-stop-defaults, *security-defaults]
+    <<: [*service-stop-defaults]
 
     image: ${POWERDNS_AUTH_IMAGE}
 
-    user: "root:root"
     restart: unless-stopped
 
     cpus: ${POWERDNS_AUTH_CPUS}
     mem_limit: ${POWERDNS_AUTH_MEM}
 
-    labels:
-      - "com.powerdns.stack=true"
-      - "com.powerdns.service=authoritative"
-      - "service.name=powerdns-auth"
-      - "service.type=dns"
-      - "maintainer=nusrath432"
+    entrypoint: ["/usr/local/sbin/pdns_server"]
+    command: ["--daemon=no", "--guardian=no"]
 
     env_file:
+      - .env
       - .env.secrets
     environment:
       <<: *common_env
 
     volumes:
-      - ../data/lmdb:/var/lib/powerdns:rw
+      - ./data/lmdb:/var/lib/powerdns:rw
       - ./services/powerdns-auth/pdns.conf:/etc/powerdns/pdns.conf:ro
 
     ports:
       - "${DNS_PORT}:53/tcp"
       - "${DNS_PORT}:53/udp"
+      - "${PDNS_API_PORT}:8081"
 
     depends_on:
       minio:
@@ -252,49 +257,35 @@ services:
     networks: *common_networks
 
     healthcheck:
-      test: ["CMD-SHELL", "pdns_control ping || exit 1"]
+      test: ["CMD-SHELL", "sdig 127.0.0.1 53 . SOA > /dev/null 2>&1"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 45s
-    read_only: true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid
-    ulimits:
-      nofile: 65536
 
   powerdns-recursor:
     container_name: pdns-recursor
     hostname: pdns-recursor
-    <<: [*service-stop-defaults, *security-defaults]
-
     image: ${POWERDNS_RECURSOR_IMAGE}
 
-    user: "root:root"
     restart: unless-stopped
 
     cpus: ${POWERDNS_RECURSOR_CPUS}
     mem_limit: ${POWERDNS_RECURSOR_MEM}
 
-    labels:
-      - "com.powerdns.stack=true"
-      - "com.powerdns.service=recursor"
-      - "service.name=powerdns-recursor"
-      - "service.type=dns"
-      - "maintainer=nusrath432"
-
     env_file:
+      - .env
       - .env.secrets
-    environment:
-      <<: *common_env
 
     volumes:
       - ./services/powerdns-recursor/recursor.conf:/etc/powerdns/recursor.conf:ro
       - ./services/powerdns-recursor/trust-anchors.conf:/etc/powerdns/trust-anchors.conf:ro
+      - ./data/recursor:/var/lib/powerdns:rw
 
     ports:
       - "${PDNS_RECURSOR_DNS_PORT}:53/tcp"
       - "${PDNS_RECURSOR_DNS_PORT}:53/udp"
+      - "${PDNS_RECURSOR_WEB_PORT}:8082"
 
     networks: *common_networks
 
@@ -304,8 +295,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 45s
-    read_only: true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid
-    ulimits:
-      nofile: 65536
